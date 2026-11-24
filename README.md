@@ -1,14 +1,13 @@
 # 🪞 MirrorCanvas: The Spatial Intent Cockpit
-> **Track 2: Beyond the Browser – Reimagining How We Use the Web**
-
-MirrorCanvas replaces the traditional 1995 tab bar with an **Infinite Spatial Cockpit** powered by **Chrome DevTools Protocol (CDP) Tele-Operation**. Instead of jumping between 20 fragmented tabs, users spawn live, interactive, authenticated mobile mirrors of real websites side-by-side on an infinite 2D canvas.
+> **Track 2: Beyond the Browser – Reimagining How We Use the Web**  
+> *Transforming fragmented tab-hopping into a live, tele-operated spatial web operating system.*
 
 ---
 
-## ⚡ The Paradigm Shift
+## ⚡ 1. The Core Paradigm Shift
 
 ```
-    TRADITIONAL WEB (1995)               AI CHATBOTS (2023)              MIRRORCANVAS (2026)
+    TRADITIONAL WEB (1995)               AI CHATBOTS (2023–2025)             MIRRORCANVAS (2026)
 ┌────────────────────────────┐      ┌────────────────────────────┐      ┌────────────────────────────┐
 │ Tab 1 │ Tab 2 │ Tab 3 │    │      │  "Here is a summary of     │      │   [📱 Live PCPartPicker]   │
 ├────────────────────────────┤      │   PC components..."        │      │             │              │
@@ -18,129 +17,132 @@ MirrorCanvas replaces the traditional 1995 tab bar with an **Infinite Spatial Co
 └────────────────────────────┘      └────────────────────────────┘      └────────────────────────────┘
 ```
 
-### The Problem With the Modern Web:
-1. **Tab Amnesia:** Completing any complex goal (building a PC, moving cities, multi-city travel, medical research) requires 15–30 disjointed tabs, mental juggling, and endless Alt-Tabbing.
-2. **The "Dead Summary" Trap of AI:** Modern AI search tools produce static, read-only summaries. You cannot click, verify real-time inventory, log in with OTP, or execute transactions inside an AI summary.
-3. **Web Sludge:** 70% of desktop surface area is taken up by sticky headers, cookie banners, autoplay ads, and subscription modals.
+### The Fundamental Flaw: The "Human Middleware" Trap
+Since tabs were invented in the late 1990s, web browsing has been fundamentally broken:
+1. **Tabs Are Blind, Deaf Islands:** Tab 1 (your transit booking) has zero awareness of Tab 2 (your hotel stay) or Tab 3 (your local documents).
+2. **Humans As Dumb Middleware:** You are forced to memorize dates, alt-tab 40 times to manually verify specs and prices, and re-type the exact same names, passport numbers, and addresses already sitting in a PDF on your laptop.
+3. **The False Dichotomy of Modern AI:**
+   * **AI Chatbots (ChatGPT, Perplexity):** Spit out dead, read-only text summaries. You cannot select a train berth, verify live stock, solve an OTP, or buy anything inside a dead Markdown summary.
+   * **Autonomous Vision Agents (Claude Computer Use):** Suffer 10–15 second latencies per click, operate on one tab at a time, hallucinate frequently, and break instantly on CAPTCHAs, SMS 2FA, and bank payment gates.
 
 ### The MirrorCanvas Solution:
-* **True 1st-Party Auth & Zero CSP Blocking:** Real tabs run in the background as top-level Chrome tabs. They retain 100% of their cookies, session state, and OTP logins, completely bypassing `SameSite` cookie partitioning, `X-Frame-Options`, and CSP iframe blocks.
-* **Bi-Directional Tele-Operation:** Mouse clicks, touch taps, keyboard strokes, and scroll gestures are translated through normalized ratio math and dispatched via CDP in real time.
-* **1-Click Native Checkout Handoff:** When ready to transact, clicking **"💳 Jump"** brings the authentic background tab into the foreground for native bank 2FA / UPI QR completion.
+**MirrorCanvas** introduces the **Inter-Tab Cognitive Bus on an Infinite 2D Spatial Canvas**:
+* **Live Spatial Mirrors:** Replaces isolated tabs with live, interactive, authenticated mobile-emulated website mirrors floating side-by-side.
+* **True 1st-Party Auth & Zero CSP Blocking:** Real tabs run in authentic Chrome contexts—retaining 100% of cookies (`SameSite=Lax/Strict`), session states, and OTP logins, completely bypassing `X-Frame-Options` and CSP frame-busting.
+* **Shared Inter-Tab Cognitive Bus:** A proactive AI copilot monitors cross-site DOM states to catch silent schedule, budget, and dimension conflicts in real time.
+* **1-Click Bank-Grade Checkout Handoff:** Switches focus directly to the authentic native tab for UPI QR / 3D Secure verification with zero credential exposure.
 
 ---
 
-## 🚀 Key Features
+## 💥 2. Earth-Breaking Capabilities
 
-* **Multi-Tile Spatial Viewport:** Run multiple live websites simultaneously side-by-side.
-* **Mobile Viewport Emulation:** Emulates a `412 × 820` mobile device, stripping desktop web sludge and presenting a clean, compact view.
-* **Universal Input Pipeline:**
-  * **Clicks & Hyperlinks:** Direct DOM element resolution and synthetic CDP click dispatching for links, buttons, and form inputs.
-  * **Smooth Scrolling:** Instant DOM scroll injection (`window.scrollBy` + `scrollingElement`) plus native CDP touch swipe gestures.
-  * **Interactive Typing:** Keystroke mapping with virtual keycodes (`Enter`, `Backspace`, shortcuts) without input lockups.
-* **1-Click Demo Workflows:**
-  * `💻 Tech:` Spawns **Hacker News** and **GitHub Trending** side-by-side.
-  * `📚 Research:` Spawns **Wikipedia** and **Reddit** side-by-side.
-  * `➕ Omni-Bar:` Enter any custom URL (e.g. `https://pcpartpicker.com`, `https://en.wikipedia.org`).
-* **Cross-Site Conflict HUD:** Live notification status bar reflecting multi-tile synchronization.
+Beyond multi-tile spatial browsing, MirrorCanvas unlocks four breakthrough capabilities:
+
+| Breakthrough | How It Works | Why It's Earth-Breaking |
+| :--- | :--- | :--- |
+| **1. Cross-Site Semantic Drag & Drop** *(Data Teleportation)* | Drag an element from Tile A (e.g., an address from Agoda or part number from PCPartPicker) and drop it onto Tile B (Google Maps or Amazon). | Standard browsers strictly forbid cross-origin drag-and-drop. MirrorCanvas intercepts coordinates and dispatches `Input.insertText` into the target tile. |
+| **2. Workspace Decision Forking** *("Git for Web Browsing")* | Click `[🌿 Fork Canvas]` when comparing options (e.g., *Option A: Train + Homestay* vs. *Option B: Flight + Resort*). Creates discrete branches with instant state restoration. | Eliminates tab hoarding and mental juggle during complex comparisons. State serialized in `chrome.storage.local`. |
+| **3. The Scissor Tool** *(Live Micro-Widget HUD)* | Draw a bounding box around any widget on a live site (e.g., just the Amazon cart total or train seat counter) to collapse the tile into a floating micro-widget. | Users build custom, live, multi-site monitoring dashboards in seconds using dynamic CSS `clip-path` and scaled CDP coordinates. |
+| **4. The Context Pocket** *(Local Document-to-Web Bridge)* | Drop a local file (`passport.pdf`, `receipt.pdf`) into the dock. The copilot extracts glowing entity badges (`[👤 Name]` `[🆔 Passport]`) that 1-click blast data into active form fields. | Transforms local files into a universal, privacy-first autofill palette across the web without cloud storage. |
 
 ---
 
-## 🏗️ Architecture
+## 🏛️ 3. Deep Technical Architecture
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                 Spatial Viewport (canvas.html)              │
+│                 Spatial Viewport (cockpit/index.html)       │
 │   [ Omni-Bar ]   [ Workflow Presets ]   [ Status HUD ]     │
 │   ┌───────────────────────────┐ ┌─────────────────────────┐ │
-│   │ Tile A: Wikipedia         │ │ Tile B: Reddit          │ │
+│   │ Tile 1: Wikipedia         │ │ Tile 2: Reddit          │ │
 │   │ <canvas 412x820>          │ │ <canvas 412x820>        │ │
 │   └─────────────┬─────────────┘ └────────────┬────────────┘ │
 └─────────────────┼────────────────────────────┼──────────────┘
                   │   Multiplexed Port         │
                   ▼   (chrome.runtime.connect) ▼
 ┌─────────────────────────────────────────────────────────────┐
-│           Extension Service Worker (background.js)          │
+│           Extension Service Worker (service-worker.js)      │
 │   - Multiplexed Tile Pool (activeTiles map)                 │
 │   - Chrome DevTools Protocol (CDP v1.3 Bridge)              │
 │   - Emulation (Viewport: 412x820, Mobile UA, Touch Emulation)│
 │   - Page.startScreencast Frame Pipeline                     │
-│   - Input Dispatcher (MouseEvent, TouchEvent, KeyEvent)     │
-│   - Universal DOM Scroll & Link Navigation Scripting        │
+│   - Universal Input Pipeline (Click/Touch, Wheel, Keys)     │
+│   - In-Place Navigation & Window Trap Neutralization        │
+│   - Dedicated Window Rasterization Engine                   │
 └──────────────────────────────┬──────────────────────────────┘
                                │ Top-Level Native Tabs
-                               ▼ (active: false)
+                               ▼ (active: false / dedicated window)
 ┌─────────────────────────────────────────────────────────────┐
-│  Tab 1: https://en.wikipedia.org (1st-Party Auth, Full CSP) │
-│  Tab 2: https://reddit.com       (1st-Party Auth, Full CSP) │
+│  Tab 1: https://en.m.wikipedia.org (1st-Party Auth, CSP)    │
+│  Tab 2: https://reddit.com         (1st-Party Auth, CSP)    │
 └─────────────────────────────────────────────────────────────┘
 ```
 
+### Architectural Decisions That Ensure Stability:
+1. **Dedicated Unfocused Windows:** Overcomes Chromium's background compositing sleep so screencast frames stream continuously at 60 FPS.
+2. **Pure CDP Extraction:** Uses `Runtime.evaluate` directly via CDP rather than injected content scripts, surviving hard reloads and cross-origin redirects without throwing *"Receiving end does not exist"*.
+3. **Window Trap Neutralization:** Injects scripts via `Page.addScriptToEvaluateOnNewDocument` to neutralize `target="_blank"` and redirect `window.open` calls in-place, keeping users in the canvas cockpit.
+4. **Normalized Ratio Input Math:** Dispatches inputs using $X_{ratio} = \frac{x - left}{width}$, ensuring 100% click/touch accuracy regardless of window resize or canvas zoom.
+
 ---
 
-## 📂 Project Structure
+## 🎯 4. Evaluator Demo Walkthrough
+
+1. **Multi-Site Workflow Presets:**
+   * Click **`💻 Tech (Hacker News + GitHub)`** or **`📚 Research (Wikipedia + Reddit)`** at the top.
+   * Two live mobile-emulated tiles render side-by-side at 60 FPS without layout distortion.
+2. **Live In-Tile Interaction:**
+   * **Smooth Scrolling:** Scroll with your mouse wheel over either tile—both respond independently.
+   * **In-Place Navigation:** Click on any blue link or article—it navigates directly inside that same tile without spawning unwanted tabs.
+   * **Crisp Text Typing:** Click into any search box (e.g. Wikipedia search), type a query (exact 1:1 character input, no double letters), and press **Enter** to search.
+3. **1-Click Checkout / Native Handoff:**
+   * Click **`💳 Jump`** on any tile header to immediately bring the genuine top-level tab to the foreground with 100% bank-grade payment security.
+
+---
+
+## 📂 5. Repository Structure
 
 ```
 c:\whackiest\
-├── manifest.json                       # Extension Manifest (V3)
-├── background.js                       # Service worker & multi-tab CDP tele-operation hub
-├── canvas.html                         # Cockpit UI host page & preset workflow bar
-├── canvas.css                          # Spatial styling, tile layouts, and dark theme
-├── canvas.js                           # Multi-tile canvas renderer, click & scroll router
+├── src\
+│   ├── manifest.json                     # Main extension manifest (MV3)
+│   ├── background\
+│   │   ├── service-worker.js             # Service worker entry & CDP tele-operation hub
+│   │   ├── cdp-client.js                 # Modular CDP commands (emulation, input, screencast)
+│   │   └── tab-manager.js                # Tab pool & lifecycle management
+│   │
+│   ├── cockpit\
+│   │   ├── index.html                    # Spatial cockpit UI
+│   │   ├── cockpit.css                   # Spatial styling, elevations, and dark theme
+│   │   └── cockpit.js                    # Multi-tile canvas renderer & input router
+│   │
+│   ├── conflict-engine\
+│   │   ├── extractor.js                  # Injected DOM text snapshot script
+│   │   ├── rules.js                      # Deterministic rules (clearance, budgets, schedule)
+│   │   └── conflict-hud.js               # HUD sync banner manager
+│   │
+│   └── assets\                           # Extension icons and UI markers
 │
-├── testing\                            # Standalone spike validation files
-│   ├── manifest.json
-│   ├── background.js
-│   ├── canvas.html
-│   ├── canvas.css
-│   └── canvas.js
-│
-├── PROJECT-SPEC-AND-CHECKLIST.md       # Long-term MVP spec, roadmap & checklist
-├── spatial-canvas-technical-blueprint.md # Comprehensive technical architecture blueprint
-└── README.md                           # This file
+├── PROJECT-SPEC-AND-CHECKLIST.md         # Long-term spec & phased implementation checklist
+├── spatial-canvas-technical-blueprint.md # Architecture blueprint
+├── mirrorcanvas-product-architecture-spec-1.md # Master product & technical architecture spec
+├── README.md                             # This documentation
+└── testing\                              # [UNTRACKED] Original standalone spike files
 ```
 
 ---
 
-## 🛠️ Installation & Setup
+## 🛠️ 6. Quick Start
 
-1. **Clone or Open Directory:**
-   * Open Chrome and navigate to `chrome://extensions/`.
-2. **Enable Developer Mode:**
-   * Toggle the **"Developer mode"** switch in the top-right corner.
-3. **Load Unpacked Extension:**
-   * Click **"Load unpacked"** in the top-left.
-   * Select the project folder: `c:\whackiest`.
-4. **Launch the Cockpit:**
-   * Click the **MirrorCanvas Spike** extension icon in your Chrome toolbar, or open:
-     ```text
-     chrome-extension://<EXTENSION_ID>/canvas.html
-     ```
+1. Open Chrome and navigate to `chrome://extensions/`.
+2. Enable **Developer mode** (toggle in the top-right).
+3. Click **Load unpacked** and select the **`src`** directory (`c:\whackiest\src`).
+4. Click the **MirrorCanvas** icon in your toolbar, or open:
+   ```text
+   chrome-extension://<EXTENSION_ID>/cockpit/index.html
+   ```
 
 ---
 
-## 🎯 How to Demo to Evaluators
-
-1. **Launch a Multi-Site Workflow:**
-   * Click **`💻 Tech (Hacker News + GitHub)`** or **`📚 Research (Wikipedia + Reddit)`** at the top.
-   * Observe two mobile-emulated tiles rendering live side-by-side at 60 FPS without layout distortion.
-2. **Interact Live Across Tiles:**
-   * **Scroll:** Place your mouse over either tile and scroll your wheel — the site scrolls smoothly.
-   * **Click & Navigate:** Click on any blue link or article on Wikipedia or Hacker News — the tile navigates directly to that page in real-time.
-   * **Search & Type:** Click on a search input (e.g. Wikipedia search), type a query, and press **Enter**.
-3. **1-Click Checkout Handoff:**
-   * Click the **`💳 Jump`** button on any tile header.
-   * Chrome instantly switches to the authentic, top-level background tab with all session cookies and desktop payment security intact.
-
----
-
-## 🔒 Security & Privacy
-
-* **Zero Credential Scraping:** Passwords, OTPs, and bank details are never intercepted by MirrorCanvas; inputs are dispatched directly to Chromium's native DevTools input engine.
-* **No Iframe Security Violations:** By operating on genuine top-level tabs, the system respects strict CSP (`frame-ancestors 'none'`) and `SameSite` cookie protections without bypass hacks.
-* **1-Click Handoff:** Sensitive transactions (UPI QR, 3D Secure, OTPs) occur directly on the authentic merchant domain.
-
----
-
-## 📜 License
+## 📜 7. License
 Developed for Hackathon Track 2: **Beyond the Browser – Reimagining How We Use the Web**.
