@@ -1,0 +1,20 @@
+{
+  "manifest_version": 3,
+  "name": "MirrorCanvas - Spatial Web Cockpit",
+  "version": "1.0",
+  "description": "Spatial Intent Cockpit - CDP Live Tele-Operation & Multi-Site Canvas",
+  "permissions": [
+    "debugger",
+    "tabs",
+    "scripting"
+  ],
+  "host_permissions": [
+    "<all_urls>"
+  ],
+  "background": {
+    "service_worker": "background/service-worker.js"
+  },
+  "action": {
+    "default_title": "Launch MirrorCanvas Cockpit"
+  }
+}

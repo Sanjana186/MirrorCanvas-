@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>MirrorCanvas - Spatial Web Cockpit</title>
+  <link rel="stylesheet" href="cockpit.css">
+</head>
+<body>
+  <!-- TOP NAVIGATION & INTENT BAR -->
+  <header class="top-bar">
+    <div class="logo-area">
+      <div class="logo">🪞 MirrorCanvas <span>MVP Cockpit</span></div>
+      <div class="status-pill">
+        <span class="status-dot"></span>
+        <span id="activeCount">0 Tiles Live</span>
+      </div>
+    </div>
+
+    <!-- OMNI INTENT & URL BAR -->
+    <div class="url-bar">
+      <input id="urlInput" type="text" placeholder="Enter URL or intent (e.g., https://pcpartpicker.com)..." />
+      <button id="spawnBtn" class="primary-btn">➕ Add Live Tile</button>
+    </div>
+
+    <!-- PRESET INTENT CHIPS -->
+    <div class="intent-presets">
+      <span class="preset-label">⚡ Demo Workflows:</span>
+      <button class="preset-chip" id="presetTech">💻 Tech (Hacker News + GitHub)</button>
+      <button class="preset-chip" id="presetWiki">📚 Research (Wikipedia + Reddit)</button>
+      <button class="preset-chip" id="presetClear">🧹 Clear All</button>
+    </div>
+  </header>
+
+  <!-- SPATIAL MULTI-TILE VIEWPORT -->
+  <main class="canvas-viewport" id="viewportStage">
+    <div class="tiles-grid" id="tilesContainer">
+      <!-- Live tiles will be spawned here dynamically -->
+    </div>
+
+    <!-- EMPTY STATE -->
+    <div id="emptyState" class="empty-state">
+      <div class="empty-icon">🌐</div>
+      <h2>Your Spatial Intent Cockpit is Ready</h2>
+      <p>Spawn multiple websites side-by-side or launch a workflow preset above.</p>
+      <div class="empty-actions">
+        <button class="action-btn" onclick="document.getElementById('presetTech').click()">Launch Tech (Hacker News + GitHub)</button>
+        <button class="action-btn" onclick="document.getElementById('presetWiki').click()">Launch Research (Wikipedia + Reddit)</button>
+      </div>
+    </div>
+  </main>
+
+  <!-- CROSS-TILE SYNC & CONFLICT HUD BANNER -->
+  <footer class="conflict-hud" id="conflictHud">
+    <div class="hud-left">
+      <span class="hud-badge green" id="hudBadge">● LIVE SYNC</span>
+      <span class="hud-text" id="hudMessage">Ready. Spawn tiles to activate cross-site intelligence.</span>
+    </div>
+    <div class="hud-right">
+      <span class="hud-meta">💡 Click tile to focus • Scroll inside tile • Type directly • 💳 Jump to Checkout brings native tab to front</span>
+    </div>
+  </footer>
+
+  <script src="cockpit.js"></script>
+</body>
+</html>
+
