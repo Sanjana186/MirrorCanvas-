@@ -1,5 +1,6 @@
-const MOBILE_VIEWPORT = { width: 412, height: 820 };
-const DESKTOP_VIEWPORT = { width: 1024, height: 768 };
+const MOBILE_VIEWPORT = { width: 412, height: 600 };
+const DESKTOP_VIEWPORT = { width: 820, height: 600 };
+const WIDE_VIEWPORT = { width: 1024, height: 650 };
 
 const port = chrome.runtime.connect({ name: "cdp-stream" });
 
@@ -16,14 +17,33 @@ const hudBadge = document.getElementById("hudBadge");
 const sideShelf = document.getElementById("sideShelf");
 const shelfItems = document.getElementById("shelfItems");
 const shelfCount = document.getElementById("shelfCount");
+const globalMobileBtn = document.getElementById("globalMobileBtn");
+const globalDesktopBtn = document.getElementById("globalDesktopBtn");
+const emptyTechBtn = document.getElementById("emptyTechBtn");
+const emptyWikiBtn = document.getElementById("emptyWikiBtn");
 
 // Active Tiles & Parked Shelf Maps
 const tiles = new Map(); // tileId -> TileInstance
 const parkedTiles = new Map(); // tileId -> { id, url, mode, title }
 let focusedTileId = null;
+let currentDefaultMode = "desktop";
+
+// Global View Mode Toggle (Default Spawn Mode)
+if (globalMobileBtn && globalDesktopBtn) {
+  globalMobileBtn.onclick = () => {
+    currentDefaultMode = "mobile";
+    globalMobileBtn.classList.add("active");
+    globalDesktopBtn.classList.remove("active");
+  };
+  globalDesktopBtn.onclick = () => {
+    currentDefaultMode = "desktop";
+    globalDesktopBtn.classList.add("active");
+    globalMobileBtn.classList.remove("active");
+  };
+}
 
 class TileInstance {
-  constructor(tileId, initialUrl, initialMode = "mobile") {
+  constructor(tileId, initialUrl, initialMode = currentDefaultMode) {
     this.id = tileId;
     this.url = initialUrl;
     this.mode = initialMode;
@@ -40,15 +60,32 @@ class TileInstance {
 
     this.card.innerHTML = `
       <div class="tile-header">
-        <div class="tile-title-group">
-          <span class="status-dot"></span>
-          <span class="tile-title" title="${initialUrl}">${domain}</span>
+        <div class="tile-header-top">
+          <div class="tile-title-group">
+            <span class="status-dot"></span>
+            <span class="tile-title" title="${initialUrl}">${domain}</span>
+          </div>
+          <div class="tile-top-actions">
+            <button class="tile-btn park-btn" title="Park to Side Shelf (Put on hold)">📦 Park</button>
+            <button class="tile-btn jump-btn" title="Bring native Chrome tab to front">💳 Jump</button>
+            <button class="tile-btn close-btn" title="Close tile">✕</button>
+          </div>
         </div>
-        <div class="tile-actions">
-          <button class="tile-btn mode-btn" title="Switch between Mobile and Desktop view">${this.mode === "desktop" ? "📱 Phone" : "💻 Desktop"}</button>
-          <button class="tile-btn park-btn" title="Park to Side Shelf (Put on hold)">📦 Park</button>
-          <button class="tile-btn jump-btn" title="Bring native Chrome tab to front">💳 Jump</button>
-          <button class="tile-btn close-btn" title="Close tile">✕</button>
+        <div class="tile-toolbar">
+          <div class="toolbar-left">
+            <span class="toolbar-label">VIEW:</span>
+            <button class="tile-btn mode-btn ${this.mode === 'desktop' ? 'active-desktop' : ''}" title="Switch between Desktop and Phone view">
+              ${this.mode === "desktop" ? "💻 Desktop" : "📱 Phone"}
+            </button>
+          </div>
+          <div class="toolbar-right">
+            <span class="toolbar-label">RESIZE:</span>
+            <div class="size-presets">
+              <button class="size-chip btn-mobile" title="Resize to Phone (412x600)">📱 412</button>
+              <button class="size-chip btn-desktop" title="Resize to Desktop (820x600)">💻 820</button>
+              <button class="size-chip btn-wide" title="Resize to Wide (1024x650)">🖥️ 1024</button>
+            </div>
+          </div>
         </div>
       </div>
       <div class="canvas-container">
@@ -57,7 +94,7 @@ class TileInstance {
           <div class="spinner"></div>
           <p>Connecting CDP stream...</p>
         </div>
-        <div class="resize-handle" title="Drag to resize"></div>
+        <div class="resize-handle" title="Click & drag corner to resize freely"></div>
       </div>
     `;
 
@@ -71,6 +108,10 @@ class TileInstance {
     this.closeBtn = this.card.querySelector(".close-btn");
     this.titleEl = this.card.querySelector(".tile-title");
     this.resizeHandle = this.card.querySelector(".resize-handle");
+
+    this.btnMobile = this.card.querySelector(".btn-mobile");
+    this.btnDesktop = this.card.querySelector(".btn-desktop");
+    this.btnWide = this.card.querySelector(".btn-wide");
 
     this.img = new Image();
 
@@ -89,6 +130,48 @@ class TileInstance {
     }
   }
 
+  setSize(w, h, mode) {
+    const targetMode = mode || (w > 600 ? "desktop" : "mobile");
+    this.mode = targetMode;
+    this.width = w;
+    this.height = h;
+
+    this.card.style.width = `${w}px`;
+    this.card.style.height = `${h + 74}px`; // accounting for 2-tier header
+
+    if (targetMode === "desktop") {
+      this.card.classList.add("desktop-mode");
+      this.modeBtn.textContent = "💻 Desktop";
+      this.modeBtn.classList.add("active-desktop");
+    } else {
+      this.card.classList.remove("desktop-mode");
+      this.modeBtn.textContent = "📱 Phone";
+      this.modeBtn.classList.remove("active-desktop");
+    }
+
+    this.canvas.width = w;
+    this.canvas.height = h;
+
+    this.loader.style.display = "flex";
+    this.loader.querySelector("p").textContent = `Setting ${targetMode} view (${w}x${h})...`;
+
+    port.postMessage({
+      type: "SET_VIEWPORT",
+      tileId: this.id,
+      width: w,
+      height: h,
+      mode: targetMode
+    });
+  }
+
+  toggleMode() {
+    if (this.mode === "desktop") {
+      this.setSize(MOBILE_VIEWPORT.width, MOBILE_VIEWPORT.height, "mobile");
+    } else {
+      this.setSize(DESKTOP_VIEWPORT.width, DESKTOP_VIEWPORT.height, "desktop");
+    }
+  }
+
   bindEvents() {
     // Focus on click
     this.card.addEventListener("pointerdown", () => {
@@ -99,6 +182,20 @@ class TileInstance {
     this.modeBtn.onclick = (e) => {
       e.stopPropagation();
       this.toggleMode();
+    };
+
+    // Quick Size Presets
+    this.btnMobile.onclick = (e) => {
+      e.stopPropagation();
+      this.setSize(MOBILE_VIEWPORT.width, MOBILE_VIEWPORT.height, "mobile");
+    };
+    this.btnDesktop.onclick = (e) => {
+      e.stopPropagation();
+      this.setSize(DESKTOP_VIEWPORT.width, DESKTOP_VIEWPORT.height, "desktop");
+    };
+    this.btnWide.onclick = (e) => {
+      e.stopPropagation();
+      this.setSize(WIDE_VIEWPORT.width, WIDE_VIEWPORT.height, "desktop");
     };
 
     // Park to Shelf
@@ -172,27 +269,28 @@ class TileInstance {
     window.addEventListener("pointerup", (e) => {
       if (!isPointerDown) return;
       isPointerDown = false;
+
+      const rect = this.canvas.getBoundingClientRect();
+      const ratioX = (e.clientX - rect.left) / rect.width;
+      const ratioY = (e.clientY - rect.top) / rect.height;
+
       port.postMessage({
         type: "TOUCH_EVENT",
         tileId: this.id,
         touchType: "touchEnd",
-        touchPoints: []
+        touchPoints: [{ ratioX, ratioY }]
       });
-      setTimeout(() => {
-        wasDragging = false;
-      }, 50);
     });
 
-    // Wheel Scroll Relay (Throttled with requestAnimationFrame)
-    let pendingDeltaY = 0;
-    let pendingDeltaX = 0;
+    // Native Wheel Scroll Relay
     let scrollRaf = null;
+    let pendingDeltaX = 0;
+    let pendingDeltaY = 0;
 
     this.canvas.addEventListener(
       "wheel",
       (e) => {
         e.preventDefault();
-        e.stopPropagation();
         const rect = this.canvas.getBoundingClientRect();
         const ratioX = (e.clientX - rect.left) / rect.width;
         const ratioY = (e.clientY - rect.top) / rect.height;
@@ -253,8 +351,6 @@ class TileInstance {
     let isDragging = false;
     let startX = 0;
     let startY = 0;
-    let origLeft = 0;
-    let origTop = 0;
 
     this.header.addEventListener("mousedown", (e) => {
       // Don't drag if clicking buttons
@@ -262,18 +358,20 @@ class TileInstance {
       isDragging = true;
       setFocusedTile(this.id);
 
-      const style = window.getComputedStyle(this.card);
-      origLeft = parseInt(style.left, 10) || 0;
-      origTop = parseInt(style.top, 10) || 0;
       startX = e.clientX;
       startY = e.clientY;
+
+      const style = window.getComputedStyle(this.card);
+      const transform = new WebKitCSSMatrix(style.transform);
+      const curTx = transform.m41;
+      const curTy = transform.m42;
 
       const onMouseMove = (ev) => {
         if (!isDragging) return;
         const dx = ev.clientX - startX;
         const dy = ev.clientY - startY;
         this.card.style.position = "relative";
-        this.card.style.transform = `translate(${dx}px, ${dy}px)`;
+        this.card.style.transform = `translate(${curTx + dx}px, ${curTy + dy}px)`;
       };
 
       const onMouseUp = () => {
@@ -308,8 +406,8 @@ class TileInstance {
 
       const onMouseMove = (ev) => {
         if (!isResizing) return;
-        const newW = Math.max(340, Math.min(1200, startW + (ev.clientX - startX)));
-        const newH = Math.max(480, Math.min(1000, startH + (ev.clientY - startY)));
+        const newW = Math.max(340, Math.min(1400, startW + (ev.clientX - startX)));
+        const newH = Math.max(400, Math.min(1000, startH + (ev.clientY - startY)));
         this.card.style.width = `${newW}px`;
         this.card.style.height = `${newH}px`;
       };
@@ -322,19 +420,9 @@ class TileInstance {
 
         // Notify service worker of new viewport dimensions
         const curW = this.card.offsetWidth;
-        const curH = this.card.offsetHeight - 42; // exclude header
-        this.width = curW;
-        this.height = curH;
-        this.canvas.width = curW;
-        this.canvas.height = curH;
-
-        port.postMessage({
-          type: "SET_VIEWPORT",
-          tileId: this.id,
-          width: curW,
-          height: curH,
-          mode: curW > 600 ? "desktop" : "mobile"
-        });
+        const curH = this.card.offsetHeight - 74; // exclude header
+        const newMode = curW > 600 ? "desktop" : "mobile";
+        this.setSize(curW, curH, newMode);
       };
 
       window.addEventListener("mousemove", onMouseMove);
@@ -342,39 +430,7 @@ class TileInstance {
     });
   }
 
-  // Toggle Viewport (Mobile vs Desktop)
-  toggleMode() {
-    const nextMode = this.mode === "desktop" ? "mobile" : "desktop";
-    this.mode = nextMode;
-    this.modeBtn.textContent = nextMode === "desktop" ? "📱 Phone" : "💻 Desktop";
-
-    if (nextMode === "desktop") {
-      this.card.classList.add("desktop-mode");
-      this.width = DESKTOP_VIEWPORT.width;
-      this.height = DESKTOP_VIEWPORT.height;
-    } else {
-      this.card.classList.remove("desktop-mode");
-      this.width = MOBILE_VIEWPORT.width;
-      this.height = MOBILE_VIEWPORT.height;
-    }
-
-    this.card.style.width = "";
-    this.card.style.height = "";
-    this.canvas.width = this.width;
-    this.canvas.height = this.height;
-
-    this.loader.style.display = "flex";
-    this.loader.innerHTML = `<div class="spinner"></div><p>Switching to ${nextMode} view...</p>`;
-
-    port.postMessage({
-      type: "SET_VIEWPORT",
-      tileId: this.id,
-      mode: nextMode,
-      width: this.width,
-      height: this.height
-    });
-  }
-
+  // Frame Renderer with dynamic aspect ratio blitting
   renderFrame(base64Data, metadata) {
     this.loader.style.display = "none";
     this.img.onload = () => {
@@ -415,7 +471,7 @@ function setFocusedTile(tileId) {
   }
 }
 
-function spawnTile(url, mode = "mobile") {
+function spawnTile(url, mode = currentDefaultMode) {
   const targetUrl = (url || "").trim();
   if (!targetUrl) return;
 
@@ -463,7 +519,6 @@ function parkTile(tileId) {
   const tile = tiles.get(tileId);
   if (!tile) return;
 
-  // Save to parked shelf
   parkedTiles.set(tileId, {
     id: tile.id,
     url: tile.url,
@@ -471,7 +526,6 @@ function parkTile(tileId) {
     title: tile.getDomain(tile.url)
   });
 
-  // Hide card from canvas stage
   tile.card.style.display = "none";
   renderSideShelf();
   updateUIState();
@@ -500,9 +554,9 @@ function renderSideShelf() {
   for (const [id, item] of parkedTiles.entries()) {
     const card = document.createElement("div");
     card.className = "shelf-card";
-    card.title = `Click to restore ${item.title} to canvas`;
+    card.title = "Click to restore back to canvas";
     card.innerHTML = `
-      <div class="shelf-card-title">🌐 ${item.title}</div>
+      <div class="shelf-card-title">${item.title}</div>
       <div class="shelf-card-meta">
         <span>${item.mode === "desktop" ? "💻 Desktop" : "📱 Phone"}</span>
         <span class="shelf-restore-badge">↩ Restore</span>
@@ -514,35 +568,36 @@ function renderSideShelf() {
 }
 
 function clearAllTiles() {
-  for (const tileId of Array.from(tiles.keys())) {
-    destroyTile(tileId);
+  for (const [id, tile] of tiles.entries()) {
+    tile.card.remove();
+    port.postMessage({ type: "CLOSE_TILE", tileId: id });
   }
+  tiles.clear();
   parkedTiles.clear();
+  focusedTileId = null;
   renderSideShelf();
+  updateUIState();
 }
 
 function updateUIState() {
   const visibleCount = Array.from(tiles.values()).filter((t) => t.card.style.display !== "none").length;
-  activeCount.textContent = `${visibleCount} Tile${visibleCount === 1 ? "" : "s"} Active`;
+  activeCount.textContent = `${visibleCount} Tile${visibleCount === 1 ? "" : "s"} Live`;
 
-  if (visibleCount === 0 && parkedTiles.size === 0) {
+  if (tiles.size === 0) {
     emptyState.style.display = "flex";
-    tilesContainer.style.display = "none";
     hudBadge.className = "hud-badge green";
     hudBadge.textContent = "● STANDBY";
-    hudMessage.textContent = "Spawn websites side-by-side or launch a workflow preset above.";
+    hudMessage.textContent = "Ready. Spawn tiles or launch a preset above to activate spatial browsing.";
   } else {
     emptyState.style.display = "none";
-    tilesContainer.style.display = "flex";
-
-    if (visibleCount >= 2) {
-      hudBadge.className = "hud-badge green";
+    if (visibleCount > 1) {
+      hudBadge.className = "hud-badge yellow";
       hudBadge.textContent = "● ACTIVE INTENT SYNC";
       hudMessage.innerHTML = `Running <b>${visibleCount} spatial sessions</b> simultaneously. Real-time CDP tele-operation active.`;
     } else {
       hudBadge.className = "hud-badge green";
       hudBadge.textContent = "● 1 LIVE TILE";
-      hudMessage.textContent = "Toggle 💻 Desktop / 📱 Phone or add more tiles to see cross-site spatial interaction.";
+      hudMessage.textContent = "Toggle 💻 Desktop / 📱 Phone or drag ↘ corner to resize window freely.";
     }
   }
 }
@@ -625,6 +680,9 @@ presetWiki.onclick = () => {
 };
 
 presetClear.onclick = clearAllTiles;
+
+if (emptyTechBtn) emptyTechBtn.onclick = () => presetTech.click();
+if (emptyWikiBtn) emptyWikiBtn.onclick = () => presetWiki.click();
 
 // Initial state
 updateUIState();

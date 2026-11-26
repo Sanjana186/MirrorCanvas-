@@ -18,15 +18,22 @@
 
     <!-- OMNI INTENT & URL BAR -->
     <div class="url-bar">
-      <input id="urlInput" type="text" placeholder="Enter URL or intent (e.g., https://pcpartpicker.com)..." />
+      <input id="urlInput" type="text" placeholder="Enter URL or intent (e.g., news.ycombinator.com)..." />
       <button id="spawnBtn" class="primary-btn">➕ Add Live Tile</button>
+    </div>
+
+    <!-- GLOBAL DEFAULT VIEW SELECTOR -->
+    <div class="global-view-selector" title="Choose default view mode for new tiles">
+      <span class="selector-label">Spawn Mode:</span>
+      <button class="view-chip" id="globalMobileBtn" title="Spawn in phone view">📱 Phone</button>
+      <button class="view-chip active" id="globalDesktopBtn" title="Spawn in widescreen desktop view">💻 Desktop</button>
     </div>
 
     <!-- PRESET INTENT CHIPS -->
     <div class="intent-presets">
-      <span class="preset-label">⚡ Demo Workflows:</span>
-      <button class="preset-chip" id="presetTech">💻 Tech (Hacker News + GitHub)</button>
-      <button class="preset-chip" id="presetWiki">📚 Research (Wikipedia + Reddit)</button>
+      <span class="preset-label">⚡ Presets:</span>
+      <button class="preset-chip" id="presetTech">💻 Tech (HN + GitHub)</button>
+      <button class="preset-chip" id="presetWiki">📚 Research (Wiki + Reddit)</button>
       <button class="preset-chip" id="presetClear">🧹 Clear All</button>
     </div>
   </header>
@@ -42,10 +49,15 @@
       <div id="emptyState" class="empty-state">
         <div class="empty-icon">🌐</div>
         <h2>Your Spatial Intent Cockpit is Ready</h2>
-        <p>Spawn websites side-by-side, toggle between Mobile and Desktop, or launch a preset.</p>
+        <p>Spawn websites side-by-side with full <b>💻 Desktop</b> and <b>📱 Phone</b> viewports, freeform draggable windows, corner resizing, and a side parking shelf.</p>
+        <div class="empty-features">
+          <div class="feature-tag">💻 <b>Desktop / Phone Toggle:</b> Instant 1-click mode switch on every window</div>
+          <div class="feature-tag">⤢ <b>Corner Resize & Presets:</b> Click 📱 412, 💻 820, 🖥️ 1024 or drag the ↘ corner</div>
+          <div class="feature-tag">📦 <b>Parked Shelf:</b> Put background tabs on hold to unclutter your stage</div>
+        </div>
         <div class="empty-actions">
-          <button class="action-btn" onclick="document.getElementById('presetTech').click()">Launch Tech (Hacker News + GitHub)</button>
-          <button class="action-btn" onclick="document.getElementById('presetWiki').click()">Launch Research (Wikipedia + Reddit)</button>
+          <button class="action-btn" id="emptyTechBtn">Launch Tech (Hacker News + GitHub)</button>
+          <button class="action-btn" id="emptyWikiBtn">Launch Research (Wikipedia + Reddit)</button>
         </div>
       </div>
     </main>
@@ -69,11 +81,10 @@
       <span class="hud-text" id="hudMessage">Ready. Spawn tiles to activate cross-site intelligence.</span>
     </div>
     <div class="hud-right">
-      <span class="hud-meta">💡 Click tile to focus • Scroll inside tile • Type directly • 💳 Jump to Checkout brings native tab to front</span>
+      <span class="hud-meta">💡 Drag header to move • Drag ↘ corner to resize • Toggle 💻 Desktop / 📱 Phone • 💳 Jump for checkout</span>
     </div>
   </footer>
 
   <script src="cockpit.js"></script>
 </body>
 </html>
-

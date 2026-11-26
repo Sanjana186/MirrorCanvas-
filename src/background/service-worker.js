@@ -1,5 +1,5 @@
-const MOBILE_VIEWPORT = { width: 412, height: 820 };
-const DESKTOP_VIEWPORT = { width: 1024, height: 768 };
+const MOBILE_VIEWPORT = { width: 412, height: 600 };
+const DESKTOP_VIEWPORT = { width: 820, height: 600 };
 const MOBILE_UA =
   "Mozilla/5.0 (Linux; Android 13; Pixel 7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Mobile Safari/537.36";
 const DESKTOP_UA =

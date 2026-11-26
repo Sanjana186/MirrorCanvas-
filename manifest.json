@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "MirrorCanvas Spike",
-  "version": "1.0",
-  "description": "Spatial Intent Cockpit - CDP Live Tele-Operation Spike",
+  "name": "MirrorCanvas - Spatial Web Cockpit",
+  "version": "1.1",
+  "description": "Spatial Intent Cockpit - CDP Live Tele-Operation & Multi-Site Canvas",
   "permissions": [
     "debugger",
     "tabs",
@@ -15,6 +15,6 @@
     "service_worker": "background.js"
   },
   "action": {
-    "default_title": "Launch MirrorCanvas Spike"
+    "default_title": "Launch MirrorCanvas Cockpit"
   }
 }
