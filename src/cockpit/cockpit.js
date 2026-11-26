@@ -1,5 +1,5 @@
 const MOBILE_VIEWPORT = { width: 412, height: 600 };
-const DESKTOP_VIEWPORT = { width: 820, height: 600 };
+const DESKTOP_VIEWPORT = { width: 700, height: 600 };
 const WIDE_VIEWPORT = { width: 1024, height: 650 };
 
 const port = chrome.runtime.connect({ name: "cdp-stream" });
@@ -223,7 +223,7 @@ class TileInstance {
     let wasDragging = false;
 
     this.canvas.addEventListener("click", (e) => {
-      this.canvas.focus();
+      this.canvas.focus({ preventScroll: true });
       if (wasDragging) return;
       const rect = this.canvas.getBoundingClientRect();
       const ratioX = (e.clientX - rect.left) / rect.width;
@@ -464,7 +464,7 @@ function setFocusedTile(tileId) {
   for (const [id, tile] of tiles.entries()) {
     if (id === tileId) {
       tile.card.classList.add("focused");
-      tile.canvas.focus();
+      tile.canvas.focus({ preventScroll: true });
     } else {
       tile.card.classList.remove("focused");
     }
@@ -618,7 +618,7 @@ port.onMessage.addListener((msg) => {
       tile.titleEl.textContent = tile.getDomain(msg.url);
       tile.loader.style.display = "none";
       if (focusedTileId === msg.tileId) {
-        tile.canvas.focus();
+        tile.canvas.focus({ preventScroll: true });
       }
     }
   }
@@ -657,10 +657,13 @@ urlInput.addEventListener("keydown", (e) => {
 // Workflows Demo Presets
 presetTech.onclick = () => {
   clearAllTiles();
+  const stage = document.getElementById("viewportStage");
+  if (stage) stage.scrollTo({ left: 0, top: 0, behavior: "instant" });
+
   spawnTile("https://news.ycombinator.com", "desktop");
   setTimeout(() => {
     spawnTile("https://github.com/trending", "desktop");
-  }, 400);
+  }, 250);
 
   hudBadge.className = "hud-badge yellow";
   hudBadge.textContent = "● TECH WORKFLOW ACTIVE";
@@ -669,10 +672,13 @@ presetTech.onclick = () => {
 
 presetWiki.onclick = () => {
   clearAllTiles();
+  const stage = document.getElementById("viewportStage");
+  if (stage) stage.scrollTo({ left: 0, top: 0, behavior: "instant" });
+
   spawnTile("https://en.m.wikipedia.org", "mobile");
   setTimeout(() => {
     spawnTile("https://www.reddit.com/r/technology", "mobile");
-  }, 400);
+  }, 250);
 
   hudBadge.className = "hud-badge green";
   hudBadge.textContent = "● RESEARCH WORKFLOW ACTIVE";
