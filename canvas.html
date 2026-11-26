@@ -31,23 +31,36 @@
     </div>
   </header>
 
-  <!-- SPATIAL MULTI-TILE VIEWPORT -->
-  <main class="canvas-viewport" id="viewportStage">
-    <div class="tiles-grid" id="tilesContainer">
-      <!-- Live tiles will be spawned here dynamically -->
-    </div>
-
-    <!-- EMPTY STATE -->
-    <div id="emptyState" class="empty-state">
-      <div class="empty-icon">🌐</div>
-      <h2>Your Spatial Intent Cockpit is Ready</h2>
-      <p>Spawn multiple websites side-by-side or launch a workflow preset above.</p>
-      <div class="empty-actions">
-        <button class="action-btn" onclick="document.getElementById('presetTech').click()">Launch Tech (Hacker News + GitHub)</button>
-        <button class="action-btn" onclick="document.getElementById('presetWiki').click()">Launch Research (Wikipedia + Reddit)</button>
+  <!-- SPATIAL MULTI-TILE VIEWPORT WITH SIDE SHELF -->
+  <div class="workspace-layout">
+    <main class="canvas-viewport" id="viewportStage">
+      <div class="tiles-stage" id="tilesContainer">
+        <!-- Floating live tiles will be positioned here -->
       </div>
-    </div>
-  </main>
+
+      <!-- EMPTY STATE -->
+      <div id="emptyState" class="empty-state">
+        <div class="empty-icon">🌐</div>
+        <h2>Your Spatial Intent Cockpit is Ready</h2>
+        <p>Spawn websites side-by-side, toggle between Mobile and Desktop, or launch a preset.</p>
+        <div class="empty-actions">
+          <button class="action-btn" onclick="document.getElementById('presetTech').click()">Launch Tech (Hacker News + GitHub)</button>
+          <button class="action-btn" onclick="document.getElementById('presetWiki').click()">Launch Research (Wikipedia + Reddit)</button>
+        </div>
+      </div>
+    </main>
+
+    <!-- SIDE SHELF (PARKED TABS ON HOLD) -->
+    <aside class="side-shelf" id="sideShelf">
+      <div class="shelf-header">
+        <span class="shelf-title">📦 Parked Shelf</span>
+        <span class="shelf-count" id="shelfCount">0</span>
+      </div>
+      <div class="shelf-items" id="shelfItems">
+        <div class="shelf-empty">Click 📦 on any tile to put it on hold here</div>
+      </div>
+    </aside>
+  </div>
 
   <!-- CROSS-TILE SYNC & CONFLICT HUD BANNER -->
   <footer class="conflict-hud" id="conflictHud">
@@ -63,4 +76,3 @@
   <script src="canvas.js"></script>
 </body>
 </html>
-

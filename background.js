@@ -1,12 +1,15 @@
-const VIEWPORT = { width: 412, height: 820 };
+const MOBILE_VIEWPORT = { width: 412, height: 820 };
+const DESKTOP_VIEWPORT = { width: 1024, height: 768 };
 const MOBILE_UA =
   "Mozilla/5.0 (Linux; Android 13; Pixel 7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Mobile Safari/537.36";
+const DESKTOP_UA =
+  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36";
 
 chrome.action.onClicked.addListener(async () => {
-  chrome.tabs.create({ url: chrome.runtime.getURL("cockpit/index.html") });
+  chrome.tabs.create({ url: chrome.runtime.getURL("canvas.html") });
 });
 
-// Map of tileId -> { tabId, isAttached, url }
+// Map of tileId -> { tabId, isAttached, url, mode, width, height }
 const activeTiles = new Map();
 
 // Safe CDP execution helper
@@ -124,7 +127,10 @@ chrome.runtime.onConnect.addListener((port) => {
         const tabId = tab.id;
 
         await chrome.debugger.attach({ tabId }, "1.3");
-        activeTiles.set(tileId, { tabId, isAttached: true, url: targetUrl });
+        const mode = msg.mode || "mobile";
+        const width = mode === "desktop" ? DESKTOP_VIEWPORT.width : MOBILE_VIEWPORT.width;
+        const height = mode === "desktop" ? DESKTOP_VIEWPORT.height : MOBILE_VIEWPORT.height;
+        activeTiles.set(tileId, { tabId, isAttached: true, url: targetUrl, mode, width, height });
 
         await sendCdp(tabId, "Page.enable");
         await sendCdp(tabId, "Network.enable");
@@ -139,28 +145,28 @@ chrome.runtime.onConnect.addListener((port) => {
           `
         }).catch(() => {});
 
-        // Mobile UA & Viewport Emulation
+        // Emulation based on mode
         await sendCdp(tabId, "Emulation.setUserAgentOverride", {
-          userAgent: MOBILE_UA,
-          platform: "Linux armv8l"
+          userAgent: mode === "desktop" ? DESKTOP_UA : MOBILE_UA,
+          platform: mode === "desktop" ? "Win32" : "Linux armv8l"
         });
 
         await sendCdp(tabId, "Emulation.setDeviceMetricsOverride", {
-          width: VIEWPORT.width,
-          height: VIEWPORT.height,
+          width,
+          height,
           deviceScaleFactor: 1,
-          mobile: true,
+          mobile: mode !== "desktop",
           fitWindow: false
         });
 
         await sendCdp(tabId, "Emulation.setVisibleSize", {
-          width: VIEWPORT.width,
-          height: VIEWPORT.height
+          width,
+          height
         }).catch(() => {});
 
         await sendCdp(tabId, "Emulation.setTouchEmulationEnabled", {
-          enabled: true,
-          configuration: "mobile"
+          enabled: mode !== "desktop",
+          configuration: mode !== "desktop" ? "mobile" : "desktop"
         });
 
         // Screencast stream
@@ -177,11 +183,67 @@ chrome.runtime.onConnect.addListener((port) => {
           type: "TILE_READY",
           tileId,
           tabId,
-          url: targetUrl
+          url: targetUrl,
+          mode,
+          width,
+          height
         });
       } catch (err) {
         console.error("Error spawning tile tab:", err);
         port.postMessage({ type: "ERROR", tileId, error: err.message });
+      }
+    }
+
+    // 1b. TOGGLE / RESIZE VIEWPORT (Mobile vs Desktop or custom size)
+    if (msg.type === "SET_VIEWPORT") {
+      const tile = activeTiles.get(msg.tileId);
+      if (tile && tile.isAttached) {
+        const mode = msg.mode || tile.mode;
+        const width = msg.width || (mode === "desktop" ? DESKTOP_VIEWPORT.width : MOBILE_VIEWPORT.width);
+        const height = msg.height || (mode === "desktop" ? DESKTOP_VIEWPORT.height : MOBILE_VIEWPORT.height);
+
+        tile.mode = mode;
+        tile.width = width;
+        tile.height = height;
+
+        try {
+          await sendCdp(tile.tabId, "Emulation.setUserAgentOverride", {
+            userAgent: mode === "desktop" ? DESKTOP_UA : MOBILE_UA,
+            platform: mode === "desktop" ? "Win32" : "Linux armv8l"
+          });
+
+          await sendCdp(tile.tabId, "Emulation.setDeviceMetricsOverride", {
+            width,
+            height,
+            deviceScaleFactor: 1,
+            mobile: mode !== "desktop",
+            fitWindow: false
+          });
+
+          await sendCdp(tile.tabId, "Emulation.setVisibleSize", { width, height }).catch(() => {});
+
+          await sendCdp(tile.tabId, "Emulation.setTouchEmulationEnabled", {
+            enabled: mode !== "desktop",
+            configuration: mode !== "desktop" ? "mobile" : "desktop"
+          });
+
+          // Trigger immediate frame capture
+          sendCdp(tile.tabId, "Page.captureScreenshot", { format: "jpeg", quality: 80 }).then((res) => {
+            if (res && res.data) {
+              port.postMessage({ type: "FRAME", tileId: msg.tileId, data: res.data });
+            }
+          }).catch(() => {});
+
+          port.postMessage({
+            type: "VIEWPORT_UPDATED",
+            tileId: msg.tileId,
+            mode,
+            width,
+            height
+          });
+        } catch (err) {
+          console.warn("Error updating viewport:", err);
+        }
       }
     }
 
@@ -194,8 +256,10 @@ chrome.runtime.onConnect.addListener((port) => {
     if (msg.type === "CLICK") {
       const tile = activeTiles.get(msg.tileId);
       if (tile && tile.isAttached) {
-        const x = Math.max(0, Math.min(VIEWPORT.width, Math.round(msg.ratioX * VIEWPORT.width)));
-        const y = Math.max(0, Math.min(VIEWPORT.height, Math.round(msg.ratioY * VIEWPORT.height)));
+        const curW = tile.width || MOBILE_VIEWPORT.width;
+        const curH = tile.height || MOBILE_VIEWPORT.height;
+        const x = Math.max(0, Math.min(curW, Math.round(msg.ratioX * curW)));
+        const y = Math.max(0, Math.min(curH, Math.round(msg.ratioY * curH)));
 
         try {
           // Method 1: Direct DOM element click (100% reliable for links <a>, buttons, inputs on any website)
@@ -263,6 +327,8 @@ chrome.runtime.onConnect.addListener((port) => {
     if (msg.type === "SCROLL") {
       const tile = activeTiles.get(msg.tileId);
       if (tile && tile.isAttached) {
+        const curW = tile.width || MOBILE_VIEWPORT.width;
+        const curH = tile.height || MOBILE_VIEWPORT.height;
         const scrollY = Math.round(msg.deltaY);
         const scrollX = Math.round(msg.deltaX || 0);
 
@@ -283,8 +349,8 @@ chrome.runtime.onConnect.addListener((port) => {
           })
           .catch(() => {});
 
-        const x = Math.max(0, Math.min(VIEWPORT.width, Math.round(msg.ratioX * VIEWPORT.width)));
-        const y = Math.max(0, Math.min(VIEWPORT.height, Math.round(msg.ratioY * VIEWPORT.height)));
+        const x = Math.max(0, Math.min(curW, Math.round(msg.ratioX * curW)));
+        const y = Math.max(0, Math.min(curH, Math.round(msg.ratioY * curH)));
 
         sendCdp(tile.tabId, "Input.synthesizeScrollGesture", {
           x,

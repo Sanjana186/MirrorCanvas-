@@ -1,5 +1,5 @@
-const VIEWPORT_W = 412;
-const VIEWPORT_H = 820;
+const MOBILE_VIEWPORT = { width: 412, height: 820 };
+const DESKTOP_VIEWPORT = { width: 1024, height: 768 };
 
 const port = chrome.runtime.connect({ name: "cdp-stream" });
 
@@ -13,20 +13,27 @@ const presetWiki = document.getElementById("presetWiki");
 const presetClear = document.getElementById("presetClear");
 const hudMessage = document.getElementById("hudMessage");
 const hudBadge = document.getElementById("hudBadge");
+const sideShelf = document.getElementById("sideShelf");
+const shelfItems = document.getElementById("shelfItems");
+const shelfCount = document.getElementById("shelfCount");
 
-// Map of tileId -> TileInstance
-const tiles = new Map();
+// Active Tiles & Parked Shelf Maps
+const tiles = new Map(); // tileId -> TileInstance
+const parkedTiles = new Map(); // tileId -> { id, url, mode, title }
 let focusedTileId = null;
 
 class TileInstance {
-  constructor(tileId, initialUrl) {
+  constructor(tileId, initialUrl, initialMode = "mobile") {
     this.id = tileId;
     this.url = initialUrl;
+    this.mode = initialMode;
     this.tabId = null;
+    this.width = initialMode === "desktop" ? DESKTOP_VIEWPORT.width : MOBILE_VIEWPORT.width;
+    this.height = initialMode === "desktop" ? DESKTOP_VIEWPORT.height : MOBILE_VIEWPORT.height;
 
     // DOM Elements
     this.card = document.createElement("div");
-    this.card.className = "tile-card";
+    this.card.className = "tile-card" + (this.mode === "desktop" ? " desktop-mode" : "");
     this.card.id = `tile-${tileId}`;
 
     const domain = this.getDomain(initialUrl);
@@ -38,30 +45,39 @@ class TileInstance {
           <span class="tile-title" title="${initialUrl}">${domain}</span>
         </div>
         <div class="tile-actions">
+          <button class="tile-btn mode-btn" title="Switch between Mobile and Desktop view">${this.mode === "desktop" ? "📱 Phone" : "💻 Desktop"}</button>
+          <button class="tile-btn park-btn" title="Park to Side Shelf (Put on hold)">📦 Park</button>
           <button class="tile-btn jump-btn" title="Bring native Chrome tab to front">💳 Jump</button>
           <button class="tile-btn close-btn" title="Close tile">✕</button>
         </div>
       </div>
       <div class="canvas-container">
-        <canvas width="${VIEWPORT_W}" height="${VIEWPORT_H}" tabindex="0"></canvas>
+        <canvas width="${this.width}" height="${this.height}" tabindex="0"></canvas>
         <div class="loader-overlay">
           <div class="spinner"></div>
           <p>Connecting CDP stream...</p>
         </div>
+        <div class="resize-handle" title="Drag to resize"></div>
       </div>
     `;
 
+    this.header = this.card.querySelector(".tile-header");
     this.canvas = this.card.querySelector("canvas");
     this.ctx = this.canvas.getContext("2d");
     this.loader = this.card.querySelector(".loader-overlay");
+    this.modeBtn = this.card.querySelector(".mode-btn");
+    this.parkBtn = this.card.querySelector(".park-btn");
     this.jumpBtn = this.card.querySelector(".jump-btn");
     this.closeBtn = this.card.querySelector(".close-btn");
     this.titleEl = this.card.querySelector(".tile-title");
+    this.resizeHandle = this.card.querySelector(".resize-handle");
 
     this.img = new Image();
 
     // Event Listeners
     this.bindEvents();
+    this.initHeaderDrag();
+    this.initCornerResize();
   }
 
   getDomain(urlStr) {
@@ -78,6 +94,18 @@ class TileInstance {
     this.card.addEventListener("pointerdown", () => {
       setFocusedTile(this.id);
     });
+
+    // Viewport Toggle: Mobile vs Desktop
+    this.modeBtn.onclick = (e) => {
+      e.stopPropagation();
+      this.toggleMode();
+    };
+
+    // Park to Shelf
+    this.parkBtn.onclick = (e) => {
+      e.stopPropagation();
+      parkTile(this.id);
+    };
 
     // Jump to native checkout
     this.jumpBtn.onclick = (e) => {
@@ -191,12 +219,9 @@ class TileInstance {
       { passive: false }
     );
 
-    // Keyboard Relay (Supports direct keystrokes & prevents tab loss)
+    // Keyboard Relay
     this.canvas.addEventListener("keydown", (e) => {
-      // Allow copy/paste shortcuts to pass through
       if ((e.ctrlKey || e.metaKey) && (e.key.toLowerCase() === "v" || e.key.toLowerCase() === "c")) return;
-
-      // Prevent canvas from losing focus on Space, Arrows, Backspace, Tab
       if (["Backspace", "Tab", " ", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(e.key)) {
         e.preventDefault();
       }
@@ -223,26 +248,154 @@ class TileInstance {
     });
   }
 
+  // Draggable Window Header
+  initHeaderDrag() {
+    let isDragging = false;
+    let startX = 0;
+    let startY = 0;
+    let origLeft = 0;
+    let origTop = 0;
+
+    this.header.addEventListener("mousedown", (e) => {
+      // Don't drag if clicking buttons
+      if (e.target.closest("button")) return;
+      isDragging = true;
+      setFocusedTile(this.id);
+
+      const style = window.getComputedStyle(this.card);
+      origLeft = parseInt(style.left, 10) || 0;
+      origTop = parseInt(style.top, 10) || 0;
+      startX = e.clientX;
+      startY = e.clientY;
+
+      const onMouseMove = (ev) => {
+        if (!isDragging) return;
+        const dx = ev.clientX - startX;
+        const dy = ev.clientY - startY;
+        this.card.style.position = "relative";
+        this.card.style.transform = `translate(${dx}px, ${dy}px)`;
+      };
+
+      const onMouseUp = () => {
+        isDragging = false;
+        window.removeEventListener("mousemove", onMouseMove);
+        window.removeEventListener("mouseup", onMouseUp);
+      };
+
+      window.addEventListener("mousemove", onMouseMove);
+      window.addEventListener("mouseup", onMouseUp);
+    });
+  }
+
+  // Freeform Corner Resizer
+  initCornerResize() {
+    let isResizing = false;
+    let startW = 0;
+    let startH = 0;
+    let startX = 0;
+    let startY = 0;
+
+    this.resizeHandle.addEventListener("mousedown", (e) => {
+      e.stopPropagation();
+      e.preventDefault();
+      isResizing = true;
+      setFocusedTile(this.id);
+
+      startW = this.card.offsetWidth;
+      startH = this.card.offsetHeight;
+      startX = e.clientX;
+      startY = e.clientY;
+
+      const onMouseMove = (ev) => {
+        if (!isResizing) return;
+        const newW = Math.max(340, Math.min(1200, startW + (ev.clientX - startX)));
+        const newH = Math.max(480, Math.min(1000, startH + (ev.clientY - startY)));
+        this.card.style.width = `${newW}px`;
+        this.card.style.height = `${newH}px`;
+      };
+
+      const onMouseUp = () => {
+        if (!isResizing) return;
+        isResizing = false;
+        window.removeEventListener("mousemove", onMouseMove);
+        window.removeEventListener("mouseup", onMouseUp);
+
+        // Notify service worker of new viewport dimensions
+        const curW = this.card.offsetWidth;
+        const curH = this.card.offsetHeight - 42; // exclude header
+        this.width = curW;
+        this.height = curH;
+        this.canvas.width = curW;
+        this.canvas.height = curH;
+
+        port.postMessage({
+          type: "SET_VIEWPORT",
+          tileId: this.id,
+          width: curW,
+          height: curH,
+          mode: curW > 600 ? "desktop" : "mobile"
+        });
+      };
+
+      window.addEventListener("mousemove", onMouseMove);
+      window.addEventListener("mouseup", onMouseUp);
+    });
+  }
+
+  // Toggle Viewport (Mobile vs Desktop)
+  toggleMode() {
+    const nextMode = this.mode === "desktop" ? "mobile" : "desktop";
+    this.mode = nextMode;
+    this.modeBtn.textContent = nextMode === "desktop" ? "📱 Phone" : "💻 Desktop";
+
+    if (nextMode === "desktop") {
+      this.card.classList.add("desktop-mode");
+      this.width = DESKTOP_VIEWPORT.width;
+      this.height = DESKTOP_VIEWPORT.height;
+    } else {
+      this.card.classList.remove("desktop-mode");
+      this.width = MOBILE_VIEWPORT.width;
+      this.height = MOBILE_VIEWPORT.height;
+    }
+
+    this.card.style.width = "";
+    this.card.style.height = "";
+    this.canvas.width = this.width;
+    this.canvas.height = this.height;
+
+    this.loader.style.display = "flex";
+    this.loader.innerHTML = `<div class="spinner"></div><p>Switching to ${nextMode} view...</p>`;
+
+    port.postMessage({
+      type: "SET_VIEWPORT",
+      tileId: this.id,
+      mode: nextMode,
+      width: this.width,
+      height: this.height
+    });
+  }
+
   renderFrame(base64Data, metadata) {
     this.loader.style.display = "none";
     this.img.onload = () => {
-      this.ctx.clearRect(0, 0, VIEWPORT_W, VIEWPORT_H);
+      this.ctx.clearRect(0, 0, this.width, this.height);
       const nw = this.img.naturalWidth;
       const nh = this.img.naturalHeight;
 
-      // In CDP screencast, Chromium renders the emulated mobile viewport (412x820)
-      // in the top-left of the compositor frame, while the rest of the host tab's width
-      // is filled with white/black space.
-      // Therefore, the true mobile screen width inside the frame is: nh * (412 / 820)
-      const targetAspect = VIEWPORT_W / VIEWPORT_H; // 412 / 820 = ~0.5024
-      const frameAspect = nw / nh;
-
-      if (frameAspect > targetAspect * 1.05) {
-        // Frame has extra desktop width on the right: crop only the mobile viewport on the left
-        const sourceW = Math.round(nh * targetAspect);
-        this.ctx.drawImage(this.img, 0, 0, sourceW, nh, 0, 0, VIEWPORT_W, VIEWPORT_H);
+      if (this.mode === "desktop") {
+        // Desktop view: draw full frame directly
+        this.ctx.drawImage(this.img, 0, 0, this.width, this.height);
       } else {
-        this.ctx.drawImage(this.img, 0, 0, VIEWPORT_W, VIEWPORT_H);
+        // Mobile view: crop out horizontal padding if Chromium captures wide host window
+        const targetAspect = this.width / this.height;
+        const frameAspect = nw / nh;
+
+        if (frameAspect > targetAspect * 1.05) {
+          const sourceW = Math.round(nh * targetAspect);
+          this.ctx.drawImage(this.img, 0, 0, sourceW, nh, 0, 0, this.width, this.height);
+        } else {
+          this.ctx.drawImage(this.img, 0, 0, this.width, this.height);
+        }
       }
     };
     this.img.src = "data:image/jpeg;base64," + base64Data;
@@ -262,12 +415,12 @@ function setFocusedTile(tileId) {
   }
 }
 
-function spawnTile(url) {
+function spawnTile(url, mode = "mobile") {
   const targetUrl = (url || "").trim();
   if (!targetUrl) return;
 
   const tileId = "tile_" + Math.random().toString(36).substring(2, 9);
-  const tile = new TileInstance(tileId, targetUrl);
+  const tile = new TileInstance(tileId, targetUrl, mode);
 
   tiles.set(tileId, tile);
   tilesContainer.appendChild(tile.card);
@@ -278,7 +431,8 @@ function spawnTile(url) {
   port.postMessage({
     type: "SPAWN_TILE",
     tileId,
-    url: targetUrl
+    url: targetUrl,
+    mode
   });
 
   return tileId;
@@ -304,35 +458,91 @@ function destroyTile(tileId) {
   }
 }
 
+// Side Shelf Parking Mechanism
+function parkTile(tileId) {
+  const tile = tiles.get(tileId);
+  if (!tile) return;
+
+  // Save to parked shelf
+  parkedTiles.set(tileId, {
+    id: tile.id,
+    url: tile.url,
+    mode: tile.mode,
+    title: tile.getDomain(tile.url)
+  });
+
+  // Hide card from canvas stage
+  tile.card.style.display = "none";
+  renderSideShelf();
+  updateUIState();
+}
+
+function restoreTile(tileId) {
+  const tile = tiles.get(tileId);
+  if (tile) {
+    tile.card.style.display = "flex";
+    parkedTiles.delete(tileId);
+    renderSideShelf();
+    setFocusedTile(tileId);
+    updateUIState();
+  }
+}
+
+function renderSideShelf() {
+  shelfCount.textContent = parkedTiles.size;
+  shelfItems.innerHTML = "";
+
+  if (parkedTiles.size === 0) {
+    shelfItems.innerHTML = `<div class="shelf-empty">Click 📦 on any tile to put it on hold here</div>`;
+    return;
+  }
+
+  for (const [id, item] of parkedTiles.entries()) {
+    const card = document.createElement("div");
+    card.className = "shelf-card";
+    card.title = `Click to restore ${item.title} to canvas`;
+    card.innerHTML = `
+      <div class="shelf-card-title">🌐 ${item.title}</div>
+      <div class="shelf-card-meta">
+        <span>${item.mode === "desktop" ? "💻 Desktop" : "📱 Phone"}</span>
+        <span class="shelf-restore-badge">↩ Restore</span>
+      </div>
+    `;
+    card.onclick = () => restoreTile(id);
+    shelfItems.appendChild(card);
+  }
+}
+
 function clearAllTiles() {
   for (const tileId of Array.from(tiles.keys())) {
     destroyTile(tileId);
   }
+  parkedTiles.clear();
+  renderSideShelf();
 }
 
 function updateUIState() {
-  const count = tiles.size;
-  activeCount.textContent = `${count} Tile${count === 1 ? "" : "s"} Live`;
+  const visibleCount = Array.from(tiles.values()).filter((t) => t.card.style.display !== "none").length;
+  activeCount.textContent = `${visibleCount} Tile${visibleCount === 1 ? "" : "s"} Active`;
 
-  if (count === 0) {
+  if (visibleCount === 0 && parkedTiles.size === 0) {
     emptyState.style.display = "flex";
     tilesContainer.style.display = "none";
     hudBadge.className = "hud-badge green";
     hudBadge.textContent = "● STANDBY";
-    hudMessage.textContent = "Spawn tiles or pick a workflow preset above to see cross-tile tele-operation.";
+    hudMessage.textContent = "Spawn websites side-by-side or launch a workflow preset above.";
   } else {
     emptyState.style.display = "none";
     tilesContainer.style.display = "flex";
 
-    // Dynamic conflict HUD evaluation for demo
-    if (count >= 2) {
+    if (visibleCount >= 2) {
       hudBadge.className = "hud-badge green";
       hudBadge.textContent = "● ACTIVE INTENT SYNC";
-      hudMessage.innerHTML = `Running <b>${count} spatial sessions</b> simultaneously. Real-time CDP tele-operation & conflict guard active.`;
+      hudMessage.innerHTML = `Running <b>${visibleCount} spatial sessions</b> simultaneously. Real-time CDP tele-operation active.`;
     } else {
       hudBadge.className = "hud-badge green";
       hudBadge.textContent = "● 1 LIVE TILE";
-      hudMessage.textContent = "Add a second tile (e.g. Amazon or Agoda) to see cross-site comparison & handoff.";
+      hudMessage.textContent = "Toggle 💻 Desktop / 📱 Phone or add more tiles to see cross-site spatial interaction.";
     }
   }
 }
@@ -355,6 +565,13 @@ port.onMessage.addListener((msg) => {
       if (focusedTileId === msg.tileId) {
         tile.canvas.focus();
       }
+    }
+  }
+
+  if (msg.type === "VIEWPORT_UPDATED") {
+    const tile = tiles.get(msg.tileId);
+    if (tile) {
+      tile.loader.style.display = "none";
     }
   }
 
@@ -382,24 +599,24 @@ urlInput.addEventListener("keydown", (e) => {
   }
 });
 
-// Workflows Demo Presets (Fast, Bot-Free, Highly Interactive Sites)
+// Workflows Demo Presets
 presetTech.onclick = () => {
   clearAllTiles();
-  spawnTile("https://news.ycombinator.com");
+  spawnTile("https://news.ycombinator.com", "desktop");
   setTimeout(() => {
-    spawnTile("https://github.com/trending");
+    spawnTile("https://github.com/trending", "desktop");
   }, 400);
 
   hudBadge.className = "hud-badge yellow";
   hudBadge.textContent = "● TECH WORKFLOW ACTIVE";
-  hudMessage.innerHTML = "Monitoring <b>Hacker News</b> discussions alongside <b>GitHub Trending</b> repositories.";
+  hudMessage.innerHTML = "Monitoring <b>Hacker News</b> discussions alongside <b>GitHub Trending</b> repositories in 💻 Desktop Mode.";
 };
 
 presetWiki.onclick = () => {
   clearAllTiles();
-  spawnTile("https://en.m.wikipedia.org");
+  spawnTile("https://en.m.wikipedia.org", "mobile");
   setTimeout(() => {
-    spawnTile("https://www.reddit.com/r/technology");
+    spawnTile("https://www.reddit.com/r/technology", "mobile");
   }, 400);
 
   hudBadge.className = "hud-badge green";
@@ -411,4 +628,4 @@ presetClear.onclick = clearAllTiles;
 
 // Initial state
 updateUIState();
-
+renderSideShelf();
