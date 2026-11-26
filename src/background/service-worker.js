@@ -1,5 +1,5 @@
 const MOBILE_VIEWPORT = { width: 412, height: 600 };
-const DESKTOP_VIEWPORT = { width: 820, height: 600 };
+const DESKTOP_VIEWPORT = { width: 700, height: 600 };
 const MOBILE_UA =
   "Mozilla/5.0 (Linux; Android 13; Pixel 7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Mobile Safari/537.36";
 const DESKTOP_UA =
@@ -9,8 +9,31 @@ chrome.action.onClicked.addListener(async () => {
   chrome.tabs.create({ url: chrome.runtime.getURL("cockpit/index.html") });
 });
 
-// Map of tileId -> { tabId, isAttached, url, mode, width, height }
+// Map of tileId -> { tabId, isAttached, url, mode, width, height, nativeJumped }
 const activeTiles = new Map();
+
+// Helper to restore spatial viewport if user interacted after jumping to native tab
+async function restoreSpatialViewport(tile) {
+  if (!tile || !tile.isAttached || !tile.nativeJumped) return;
+  tile.nativeJumped = false;
+  try {
+    await sendCdp(tile.tabId, "Emulation.setUserAgentOverride", {
+      userAgent: tile.mode === "desktop" ? DESKTOP_UA : MOBILE_UA,
+      platform: tile.mode === "desktop" ? "Win32" : "Linux armv8l"
+    });
+    await sendCdp(tile.tabId, "Emulation.setDeviceMetricsOverride", {
+      width: tile.width,
+      height: tile.height,
+      deviceScaleFactor: 1,
+      mobile: tile.mode !== "desktop",
+      fitWindow: false
+    });
+    await sendCdp(tile.tabId, "Emulation.setTouchEmulationEnabled", {
+      enabled: tile.mode !== "desktop",
+      configuration: tile.mode !== "desktop" ? "mobile" : "desktop"
+    });
+  } catch (_) {}
+}
 
 // Safe CDP execution helper
 async function sendCdp(tabId, method, params) {
@@ -198,13 +221,16 @@ chrome.runtime.onConnect.addListener((port) => {
     if (msg.type === "SET_VIEWPORT") {
       const tile = activeTiles.get(msg.tileId);
       if (tile && tile.isAttached) {
+        const prevMode = tile.mode;
         const mode = msg.mode || tile.mode;
         const width = msg.width || (mode === "desktop" ? DESKTOP_VIEWPORT.width : MOBILE_VIEWPORT.width);
         const height = msg.height || (mode === "desktop" ? DESKTOP_VIEWPORT.height : MOBILE_VIEWPORT.height);
+        const modeSwitched = prevMode !== mode;
 
         tile.mode = mode;
         tile.width = width;
         tile.height = height;
+        tile.nativeJumped = false;
 
         try {
           await sendCdp(tile.tabId, "Emulation.setUserAgentOverride", {
@@ -226,6 +252,22 @@ chrome.runtime.onConnect.addListener((port) => {
             enabled: mode !== "desktop",
             configuration: mode !== "desktop" ? "mobile" : "desktop"
           });
+
+          // If mode switched (Mobile <-> Desktop), reload or navigate to get server-rendered layout
+          if (modeSwitched) {
+            const tab = await chrome.tabs.get(tile.tabId).catch(() => null);
+            if (tab && tab.url) {
+              if (mode === "desktop" && tab.url.includes(".m.wikipedia.org")) {
+                const deskWiki = tab.url.replace(".m.wikipedia.org", ".wikipedia.org");
+                await chrome.tabs.update(tile.tabId, { url: deskWiki });
+              } else if (mode === "mobile" && tab.url.includes("wikipedia.org") && !tab.url.includes(".m.")) {
+                const mobiWiki = tab.url.replace("wikipedia.org", ".m.wikipedia.org");
+                await chrome.tabs.update(tile.tabId, { url: mobiWiki });
+              } else {
+                await sendCdp(tile.tabId, "Page.reload", { ignoreCache: false });
+              }
+            }
+          }
 
           // Trigger immediate frame capture
           sendCdp(tile.tabId, "Page.captureScreenshot", { format: "jpeg", quality: 80 }).then((res) => {
@@ -256,6 +298,7 @@ chrome.runtime.onConnect.addListener((port) => {
     if (msg.type === "CLICK") {
       const tile = activeTiles.get(msg.tileId);
       if (tile && tile.isAttached) {
+        if (tile.nativeJumped) await restoreSpatialViewport(tile);
         const curW = tile.width || MOBILE_VIEWPORT.width;
         const curH = tile.height || MOBILE_VIEWPORT.height;
         const x = Math.max(0, Math.min(curW, Math.round(msg.ratioX * curW)));
@@ -476,11 +519,30 @@ chrome.runtime.onConnect.addListener((port) => {
       }
     }
 
-    // 8. FOCUS / JUMP TO NATIVE TAB
+    // 8. FOCUS / JUMP TO NATIVE TAB (Brings authentic tab to front at full device resolution)
     if (msg.type === "FOCUS_TAB") {
       const tile = activeTiles.get(msg.tileId);
-      if (tile) {
-        chrome.tabs.update(tile.tabId, { active: true });
+      if (tile && tile.isAttached) {
+        tile.nativeJumped = true;
+        try {
+          // Clear device metrics override so tab expands to 100% full screen on user's device
+          await sendCdp(tile.tabId, "Emulation.clearDeviceMetricsOverride", {});
+          await sendCdp(tile.tabId, "Emulation.setUserAgentOverride", { userAgent: "" });
+          await sendCdp(tile.tabId, "Emulation.setTouchEmulationEnabled", { enabled: false });
+
+          // If Wikipedia was in mobile subdomain, restore full desktop domain
+          const tab = await chrome.tabs.get(tile.tabId).catch(() => null);
+          if (tab && tab.url && tab.url.includes(".m.wikipedia.org")) {
+            await chrome.tabs.update(tile.tabId, { url: tab.url.replace(".m.wikipedia.org", ".wikipedia.org") });
+          }
+
+          if (tab && tab.windowId) {
+            await chrome.windows.update(tab.windowId, { focused: true });
+            await chrome.tabs.update(tile.tabId, { active: true });
+          }
+        } catch (err) {
+          console.warn("Error restoring native tab dimensions on Jump:", err);
+        }
       }
     }
   });

@@ -286,6 +286,39 @@ body {
   gap: 5px;
 }
 
+.view-switch-group {
+  display: flex;
+  align-items: center;
+  background: #0b1120;
+  border: 1px solid #1e293b;
+  border-radius: 6px;
+  padding: 1px;
+  gap: 2px;
+}
+
+.view-switch-btn {
+  background: transparent;
+  color: #94a3b8;
+  border: none;
+  border-radius: 4px;
+  padding: 2px 7px;
+  font-size: 0.68rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.view-switch-btn:hover {
+  color: #f8fafc;
+  background: #1e293b;
+}
+
+.view-switch-btn.active {
+  background: #2563eb;
+  color: #ffffff;
+  box-shadow: 0 0 8px rgba(37, 99, 235, 0.4);
+}
+
 .toolbar-label {
   font-size: 0.65rem;
   color: #64748b;

@@ -74,16 +74,17 @@ class TileInstance {
         <div class="tile-toolbar">
           <div class="toolbar-left">
             <span class="toolbar-label">VIEW:</span>
-            <button class="tile-btn mode-btn ${this.mode === 'desktop' ? 'active-desktop' : ''}" title="Switch between Desktop and Phone view">
-              ${this.mode === "desktop" ? "💻 Desktop" : "📱 Phone"}
-            </button>
+            <div class="view-switch-group">
+              <button class="view-switch-btn btn-phone ${this.mode === 'mobile' ? 'active' : ''}" title="Switch to Mobile Phone view">📱 Phone</button>
+              <button class="view-switch-btn btn-desktop ${this.mode === 'desktop' ? 'active' : ''}" title="Switch to Desktop view">💻 Desktop</button>
+            </div>
           </div>
           <div class="toolbar-right">
-            <span class="toolbar-label">RESIZE:</span>
+            <span class="toolbar-label">SIZE:</span>
             <div class="size-presets">
-              <button class="size-chip btn-mobile" title="Resize to Phone (412x600)">📱 412</button>
-              <button class="size-chip btn-desktop" title="Resize to Desktop (820x600)">💻 820</button>
-              <button class="size-chip btn-wide" title="Resize to Wide (1024x650)">🖥️ 1024</button>
+              <button class="size-chip btn-mobile-size" title="Resize to Phone (412x600)">📱 412</button>
+              <button class="size-chip btn-desktop-size" title="Resize to Desktop (700x600)">💻 700</button>
+              <button class="size-chip btn-wide-size" title="Resize to Wide (1024x650)">🖥️ 1024</button>
             </div>
           </div>
         </div>
@@ -102,16 +103,17 @@ class TileInstance {
     this.canvas = this.card.querySelector("canvas");
     this.ctx = this.canvas.getContext("2d");
     this.loader = this.card.querySelector(".loader-overlay");
-    this.modeBtn = this.card.querySelector(".mode-btn");
+    this.btnPhone = this.card.querySelector(".btn-phone");
+    this.btnDesktop = this.card.querySelector(".btn-desktop");
     this.parkBtn = this.card.querySelector(".park-btn");
     this.jumpBtn = this.card.querySelector(".jump-btn");
     this.closeBtn = this.card.querySelector(".close-btn");
     this.titleEl = this.card.querySelector(".tile-title");
     this.resizeHandle = this.card.querySelector(".resize-handle");
 
-    this.btnMobile = this.card.querySelector(".btn-mobile");
-    this.btnDesktop = this.card.querySelector(".btn-desktop");
-    this.btnWide = this.card.querySelector(".btn-wide");
+    this.btnMobileSize = this.card.querySelector(".btn-mobile-size");
+    this.btnDesktopSize = this.card.querySelector(".btn-desktop-size");
+    this.btnWideSize = this.card.querySelector(".btn-wide-size");
 
     this.img = new Image();
 
@@ -131,29 +133,29 @@ class TileInstance {
   }
 
   setSize(w, h, mode) {
-    const targetMode = mode || (w > 600 ? "desktop" : "mobile");
+    const targetMode = mode || (w > 550 ? "desktop" : "mobile");
     this.mode = targetMode;
     this.width = w;
     this.height = h;
 
     this.card.style.width = `${w}px`;
-    this.card.style.height = `${h + 74}px`; // accounting for 2-tier header
+    this.card.style.height = `${h + 74}px`;
 
     if (targetMode === "desktop") {
       this.card.classList.add("desktop-mode");
-      this.modeBtn.textContent = "💻 Desktop";
-      this.modeBtn.classList.add("active-desktop");
+      if (this.btnDesktop) this.btnDesktop.classList.add("active");
+      if (this.btnPhone) this.btnPhone.classList.remove("active");
     } else {
       this.card.classList.remove("desktop-mode");
-      this.modeBtn.textContent = "📱 Phone";
-      this.modeBtn.classList.remove("active-desktop");
+      if (this.btnPhone) this.btnPhone.classList.add("active");
+      if (this.btnDesktop) this.btnDesktop.classList.remove("active");
     }
 
     this.canvas.width = w;
     this.canvas.height = h;
 
     this.loader.style.display = "flex";
-    this.loader.querySelector("p").textContent = `Setting ${targetMode} view (${w}x${h})...`;
+    this.loader.querySelector("p").textContent = `Switching to ${targetMode} view & updating...`;
 
     port.postMessage({
       type: "SET_VIEWPORT",
@@ -178,22 +180,30 @@ class TileInstance {
       setFocusedTile(this.id);
     });
 
-    // Viewport Toggle: Mobile vs Desktop
-    this.modeBtn.onclick = (e) => {
+    // View Switch Buttons
+    this.btnPhone.onclick = (e) => {
       e.stopPropagation();
-      this.toggleMode();
-    };
-
-    // Quick Size Presets
-    this.btnMobile.onclick = (e) => {
-      e.stopPropagation();
-      this.setSize(MOBILE_VIEWPORT.width, MOBILE_VIEWPORT.height, "mobile");
+      if (this.mode !== "mobile") {
+        this.setSize(MOBILE_VIEWPORT.width, MOBILE_VIEWPORT.height, "mobile");
+      }
     };
     this.btnDesktop.onclick = (e) => {
       e.stopPropagation();
+      if (this.mode !== "desktop") {
+        this.setSize(DESKTOP_VIEWPORT.width, DESKTOP_VIEWPORT.height, "desktop");
+      }
+    };
+
+    // Quick Size Presets
+    this.btnMobileSize.onclick = (e) => {
+      e.stopPropagation();
+      this.setSize(MOBILE_VIEWPORT.width, MOBILE_VIEWPORT.height, "mobile");
+    };
+    this.btnDesktopSize.onclick = (e) => {
+      e.stopPropagation();
       this.setSize(DESKTOP_VIEWPORT.width, DESKTOP_VIEWPORT.height, "desktop");
     };
-    this.btnWide.onclick = (e) => {
+    this.btnWideSize.onclick = (e) => {
       e.stopPropagation();
       this.setSize(WIDE_VIEWPORT.width, WIDE_VIEWPORT.height, "desktop");
     };
@@ -675,14 +685,14 @@ presetWiki.onclick = () => {
   const stage = document.getElementById("viewportStage");
   if (stage) stage.scrollTo({ left: 0, top: 0, behavior: "instant" });
 
-  spawnTile("https://en.m.wikipedia.org", "mobile");
+  spawnTile("https://en.wikipedia.org", "desktop");
   setTimeout(() => {
-    spawnTile("https://www.reddit.com/r/technology", "mobile");
+    spawnTile("https://www.reddit.com/r/technology", "desktop");
   }, 250);
 
   hudBadge.className = "hud-badge green";
   hudBadge.textContent = "● RESEARCH WORKFLOW ACTIVE";
-  hudMessage.innerHTML = "Cross-referencing <b>Wikipedia</b> knowledge base with live <b>Reddit</b> community discussions.";
+  hudMessage.innerHTML = "Cross-referencing <b>Wikipedia</b> knowledge base with live <b>Reddit</b> community discussions in 💻 Desktop Mode.";
 };
 
 presetClear.onclick = clearAllTiles;
