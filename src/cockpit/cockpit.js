@@ -1,5 +1,5 @@
 const MOBILE_VIEWPORT = { width: 412, height: 600 };
-const DESKTOP_VIEWPORT = { width: 700, height: 600 };
+const DESKTOP_VIEWPORT = { width: 850, height: 620 };
 const WIDE_VIEWPORT = { width: 1024, height: 650 };
 
 const port = chrome.runtime.connect({ name: "cdp-stream" });
@@ -580,13 +580,13 @@ function renderSideShelf() {
 function clearAllTiles() {
   for (const [id, tile] of tiles.entries()) {
     tile.card.remove();
-    port.postMessage({ type: "CLOSE_TILE", tileId: id });
   }
   tiles.clear();
   parkedTiles.clear();
   focusedTileId = null;
   renderSideShelf();
   updateUIState();
+  port.postMessage({ type: "CLEAR_ALL_TILES" });
 }
 
 function updateUIState() {
@@ -673,7 +673,7 @@ presetTech.onclick = () => {
   spawnTile("https://news.ycombinator.com", "desktop");
   setTimeout(() => {
     spawnTile("https://github.com/trending", "desktop");
-  }, 250);
+  }, 150);
 
   hudBadge.className = "hud-badge yellow";
   hudBadge.textContent = "● TECH WORKFLOW ACTIVE";
@@ -685,10 +685,10 @@ presetWiki.onclick = () => {
   const stage = document.getElementById("viewportStage");
   if (stage) stage.scrollTo({ left: 0, top: 0, behavior: "instant" });
 
-  spawnTile("https://en.wikipedia.org", "desktop");
+  spawnTile("https://en.wikipedia.org/wiki/Artificial_intelligence", "desktop");
   setTimeout(() => {
-    spawnTile("https://www.reddit.com/r/technology", "desktop");
-  }, 250);
+    spawnTile("https://old.reddit.com/r/technology", "desktop");
+  }, 150);
 
   hudBadge.className = "hud-badge green";
   hudBadge.textContent = "● RESEARCH WORKFLOW ACTIVE";

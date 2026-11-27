@@ -1,5 +1,5 @@
 const MOBILE_VIEWPORT = { width: 412, height: 600 };
-const DESKTOP_VIEWPORT = { width: 700, height: 600 };
+const DESKTOP_VIEWPORT = { width: 850, height: 620 };
 const MOBILE_UA =
   "Mozilla/5.0 (Linux; Android 13; Pixel 7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Mobile Safari/537.36";
 const DESKTOP_UA =
@@ -145,12 +145,24 @@ chrome.runtime.onConnect.addListener((port) => {
           targetUrl = "https://" + targetUrl;
         }
 
-        // Create tab with target URL directly
-        const tab = await chrome.tabs.create({ url: targetUrl, active: false });
+        // Start tab at about:blank so emulation & desktop User-Agent are locked in BEFORE the site loads
+        const tab = await chrome.tabs.create({ url: "about:blank", active: false });
         const tabId = tab.id;
 
-        await chrome.debugger.attach({ tabId }, "1.3");
-        const mode = msg.mode || "mobile";
+        // Resilient debugger attach with retry
+        let attached = false;
+        for (let attempt = 0; attempt < 3; attempt++) {
+          try {
+            await chrome.debugger.attach({ tabId }, "1.3");
+            attached = true;
+            break;
+          } catch (_) {
+            await new Promise((r) => setTimeout(r, 100));
+          }
+        }
+        if (!attached) throw new Error("Could not attach debugger to tab");
+
+        const mode = msg.mode || "desktop";
         const width = mode === "desktop" ? DESKTOP_VIEWPORT.width : MOBILE_VIEWPORT.width;
         const height = mode === "desktop" ? DESKTOP_VIEWPORT.height : MOBILE_VIEWPORT.height;
         activeTiles.set(tileId, { tabId, isAttached: true, url: targetUrl, mode, width, height });
@@ -168,7 +180,7 @@ chrome.runtime.onConnect.addListener((port) => {
           `
         }).catch(() => {});
 
-        // Emulation based on mode
+        // Emulation applied BEFORE navigation
         await sendCdp(tabId, "Emulation.setUserAgentOverride", {
           userAgent: mode === "desktop" ? DESKTOP_UA : MOBILE_UA,
           platform: mode === "desktop" ? "Win32" : "Linux armv8l"
@@ -199,7 +211,7 @@ chrome.runtime.onConnect.addListener((port) => {
           everyNthFrame: 1
         });
 
-        // Trigger navigation explicitly so the tab starts loading immediately with all emulation active
+        // Navigate cleanly to the target URL with all desktop emulation active
         await sendCdp(tabId, "Page.navigate", { url: targetUrl });
 
         port.postMessage({
@@ -292,6 +304,11 @@ chrome.runtime.onConnect.addListener((port) => {
     // 2. CLOSE TILE
     if (msg.type === "CLOSE_TILE") {
       await cleanupTile(msg.tileId);
+    }
+
+    // 2b. CLEANUP ALL TILES IN ONE BATCH
+    if (msg.type === "CLEAR_ALL_TILES") {
+      await cleanupAllTiles();
     }
 
     // 3. RELAY CLICKS
